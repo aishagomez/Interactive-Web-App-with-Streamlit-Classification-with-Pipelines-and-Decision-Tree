@@ -13,10 +13,23 @@ def display_classification_report(y_true, y_pred, title="Report"):
     df_report = pd.DataFrame(report_dict).transpose()
     st.subheader(title)
     st.dataframe(df_report.round(3))  
-
 def train_and_evaluate_model(splits):
     st.subheader("Train Model")
 
+    # --- Cargar pipeline entrenado existente ---
+    uploaded_pipeline = st.file_uploader("Load Trained Pipeline (.pkl)", type=["pkl"])
+    if uploaded_pipeline:
+        st.session_state['model_pipeline'] = cloudpickle.load(uploaded_pipeline)
+        st.success("Pipeline loaded successfully!")
+
+        # Mostrar reportes con los splits ya transformados
+        pipeline = st.session_state['model_pipeline']
+        display_classification_report(splits['y_train'], pipeline.predict(splits['X_train']), "📈 Train Set Report")
+        display_classification_report(splits['y_val'], pipeline.predict(splits['X_val']), "📈 Validation Set Report")
+        display_classification_report(splits['y_test'], pipeline.predict(splits['X_test']), "📈 Test Set Report")
+        return  # Salimos, no entrenamos de nuevo
+
+    # --- Entrenamiento normal ---
     X_train = splits["X_train"]
     y_train = splits["y_train"]
     X_val = splits["X_val"]
@@ -39,7 +52,7 @@ def train_and_evaluate_model(splits):
 
     if st.button("Train Model"):
         clf_pipeline.fit(X_train, y_train)
-        st.session_state['model_pipeline'] = clf_pipeline  # guardamos pipeline completo
+        st.session_state['model_pipeline'] = clf_pipeline
 
         st.success("Model trained!")
 
@@ -58,6 +71,7 @@ def train_and_evaluate_model(splits):
             file_name=f"{model_choice.lower().replace(' ', '_')}_pipeline.pkl",
             mime="application/octet-stream"
         )
+
 
 def run_prediction_tab(splits, df):
     st.subheader("Predict with Trained Model")
